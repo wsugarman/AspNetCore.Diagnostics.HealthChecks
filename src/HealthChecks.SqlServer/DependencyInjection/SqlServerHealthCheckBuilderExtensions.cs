@@ -82,7 +82,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// Add a health check for SqlServer services.
         /// </summary>
         /// <param name="builder">The <see cref="IHealthChecksBuilder"/>.</param>
-        /// <param name="connectionFactory">An asynchronous factory to build the SQL Server connection.</param>
+        /// <param name="connectionFactory">A factory to build the SQL Server connection.</param>
         /// <param name="name">The health check name. Optional. If <c>null</c> the type name 'sqlserver' will be used for the name.</param>
         /// <param name="failureStatus">
         /// The <see cref="HealthStatus"/> that should be reported when the health check fails. Optional. If <c>null</c> then
@@ -94,7 +94,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <returns>The specified <paramref name="builder"/>.</returns>
         public static IHealthChecksBuilder AddSqlServer(
             this IHealthChecksBuilder builder,
-            Func<CancellationToken, ValueTask<SqlConnection>> connectionFactory,
+            Func<SqlConnection> connectionFactory,
             string? name = default,
             HealthStatus? failureStatus = default,
             IEnumerable<string>? tags = default,
@@ -120,7 +120,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// Add a health check for SqlServer services.
         /// </summary>
         /// <param name="builder">The <see cref="IHealthChecksBuilder"/>.</param>
-        /// <param name="connectionFactory">An asynchronous factory to build the SQL Server connection.</param>
+        /// <param name="connectionFactory">A factory to build the SQL Server connection.</param>
         /// <param name="name">The health check name. Optional. If <c>null</c> the type name 'sqlserver' will be used for the name.</param>
         /// <param name="failureStatus">
         /// The <see cref="HealthStatus"/> that should be reported when the health check fails. Optional. If <c>null</c> then
@@ -132,7 +132,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <returns>The specified <paramref name="builder"/>.</returns>
         public static IHealthChecksBuilder AddSqlServer(
             this IHealthChecksBuilder builder,
-            Func<IServiceProvider, CancellationToken, ValueTask<SqlConnection>> connectionFactory,
+            Func<IServiceProvider, SqlConnection> connectionFactory,
             string? name = default,
             HealthStatus? failureStatus = default,
             IEnumerable<string>? tags = default,
@@ -148,7 +148,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
             return builder.Add(new HealthCheckRegistration(
                 name ?? NAME,
-                sp => new SqlServerHealthCheck(t => connectionFactory(sp, t), c => configureCommand(sp, c)),
+                sp => new SqlServerHealthCheck(() => connectionFactory(sp), c => configureCommand(sp, c)),
                 failureStatus,
                 tags,
                 timeout));

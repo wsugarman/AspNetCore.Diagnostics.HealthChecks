@@ -6,16 +6,16 @@ namespace HealthChecks.SqlServer
 {
     public class SqlServerHealthCheck : IHealthCheck
     {
-        private readonly Func<CancellationToken, ValueTask<SqlConnection>> _getConnectionAsync;
+        private readonly Func<SqlConnection> _connectionFactory;
         private readonly Action<SqlCommand> _configureCommand;
 
         public SqlServerHealthCheck(string sqlserverconnectionstring, string sql, Action<SqlConnection>? beforeOpenConnectionConfigurer)
             : this(CreateDefaultConnectionFactory(sqlserverconnectionstring, beforeOpenConnectionConfigurer), CreateDefaultCommandDelegate(sql))
         { }
 
-        internal SqlServerHealthCheck(Func<CancellationToken, ValueTask<SqlConnection>> getConnectionAsync, Action<SqlCommand> configureCommand)
+        internal SqlServerHealthCheck(Func<SqlConnection> connectionFactory, Action<SqlCommand> configureCommand)
         {
-            _getConnectionAsync = getConnectionAsync ?? throw new ArgumentNullException(nameof(getConnectionAsync));
+            _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
             _configureCommand = configureCommand ?? throw new ArgumentNullException(nameof(configureCommand));
         }
 
@@ -23,7 +23,7 @@ namespace HealthChecks.SqlServer
         {
             try
             {
-                using var connection = await _getConnectionAsync.Invoke(cancellationToken).ConfigureAwait(false);
+                using var connection = _connectionFactory();
                 if (connection == null)
                 {
                     throw new InvalidOperationException("SQL connection cannot be null.");
@@ -50,19 +50,19 @@ namespace HealthChecks.SqlServer
             }
         }
 
-        private static Func<CancellationToken, ValueTask<SqlConnection>> CreateDefaultConnectionFactory(string sqlserverconnectionstring, Action<SqlConnection>? beforeOpenConnectionConfigurer)
+        private static Func<SqlConnection> CreateDefaultConnectionFactory(string sqlserverconnectionstring, Action<SqlConnection>? beforeOpenConnectionConfigurer)
         {
             if (sqlserverconnectionstring == null)
             {
                 throw new ArgumentNullException(nameof(sqlserverconnectionstring));
             }
 
-            return t =>
+            return () =>
             {
                 var connection = new SqlConnection(sqlserverconnectionstring);
                 beforeOpenConnectionConfigurer?.Invoke(connection);
 
-                return ValueTask.FromResult(connection);
+                return connection;
             };
         }
 
