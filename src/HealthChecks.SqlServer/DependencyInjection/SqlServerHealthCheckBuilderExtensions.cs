@@ -77,5 +77,81 @@ namespace Microsoft.Extensions.DependencyInjection
                 tags,
                 timeout));
         }
+
+        /// <summary>
+        /// Add a health check for SqlServer services.
+        /// </summary>
+        /// <param name="builder">The <see cref="IHealthChecksBuilder"/>.</param>
+        /// <param name="connectionFactory">An asynchronous factory to build the SQL Server connection.</param>
+        /// <param name="name">The health check name. Optional. If <c>null</c> the type name 'sqlserver' will be used for the name.</param>
+        /// <param name="failureStatus">
+        /// The <see cref="HealthStatus"/> that should be reported when the health check fails. Optional. If <c>null</c> then
+        /// the default status of <see cref="HealthStatus.Unhealthy"/> will be reported.
+        /// </param>
+        /// <param name="tags">A list of tags that can be used to filter sets of health checks. Optional.</param>
+        /// <param name="timeout">An optional <see cref="TimeSpan"/> representing the timeout of the check.</param>
+        /// <param name="configureCommand">An optional action for configuring the <see cref="SqlCommand"/> used to determine if the service is healthy.</param>
+        /// <returns>The specified <paramref name="builder"/>.</returns>
+        public static IHealthChecksBuilder AddSqlServer(
+            this IHealthChecksBuilder builder,
+            Func<CancellationToken, ValueTask<SqlConnection>> connectionFactory,
+            string? name = default,
+            HealthStatus? failureStatus = default,
+            IEnumerable<string>? tags = default,
+            TimeSpan? timeout = default,
+            Action<SqlCommand>? configureCommand = default)
+        {
+            if (connectionFactory == null)
+            {
+                throw new ArgumentNullException(nameof(connectionFactory));
+            }
+
+            configureCommand ??= c => c.CommandText = HEALTH_QUERY;
+
+            return builder.Add(new HealthCheckRegistration(
+                name ?? NAME,
+                sp => new SqlServerHealthCheck(connectionFactory, configureCommand),
+                failureStatus,
+                tags,
+                timeout));
+        }
+
+        /// <summary>
+        /// Add a health check for SqlServer services.
+        /// </summary>
+        /// <param name="builder">The <see cref="IHealthChecksBuilder"/>.</param>
+        /// <param name="connectionFactory">An asynchronous factory to build the SQL Server connection.</param>
+        /// <param name="name">The health check name. Optional. If <c>null</c> the type name 'sqlserver' will be used for the name.</param>
+        /// <param name="failureStatus">
+        /// The <see cref="HealthStatus"/> that should be reported when the health check fails. Optional. If <c>null</c> then
+        /// the default status of <see cref="HealthStatus.Unhealthy"/> will be reported.
+        /// </param>
+        /// <param name="tags">A list of tags that can be used to filter sets of health checks. Optional.</param>
+        /// <param name="timeout">An optional <see cref="TimeSpan"/> representing the timeout of the check.</param>
+        /// <param name="configureCommand">An optional action for configuring the <see cref="SqlCommand"/> used to determine if the service is healthy.</param>
+        /// <returns>The specified <paramref name="builder"/>.</returns>
+        public static IHealthChecksBuilder AddSqlServer(
+            this IHealthChecksBuilder builder,
+            Func<IServiceProvider, CancellationToken, ValueTask<SqlConnection>> connectionFactory,
+            string? name = default,
+            HealthStatus? failureStatus = default,
+            IEnumerable<string>? tags = default,
+            TimeSpan? timeout = default,
+            Action<IServiceProvider, SqlCommand>? configureCommand = default)
+        {
+            if (connectionFactory == null)
+            {
+                throw new ArgumentNullException(nameof(connectionFactory));
+            }
+
+            configureCommand ??= (sp, c) => c.CommandText = HEALTH_QUERY;
+
+            return builder.Add(new HealthCheckRegistration(
+                name ?? NAME,
+                sp => new SqlServerHealthCheck(t => connectionFactory(sp, t), c => configureCommand(sp, c)),
+                failureStatus,
+                tags,
+                timeout));
+        }
     }
 }
